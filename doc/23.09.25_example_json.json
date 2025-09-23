@@ -1,0 +1,24 @@
+{
+  "moduleKey1": {
+    "name": "...",
+    "infoUrl": "https://info.url",
+    "seats": 123,
+    "taken": 123,
+    "icon": "https://icon.url",
+    "exclusive": [
+      "modulename1",
+      "modulename2"
+    ]
+  },
+  "moduleKey2": {
+    "name": "...",
+    "infoUrl": "https://info.url",
+    "seats": 123,
+    "taken": 123,
+    "icon": "https://icon.url",
+    "exclusive": [
+      "modulename1",
+      "modulename2"
+    ]
+  }
+}
