@@ -1,9 +1,75 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:project_fomo/api/util/ApiHelper.dart';
 
 void main() {
   runApp(const MyApp());
 }
+
+const String mockjsonDataString = '''
+{
+  "Option1": {
+    "name": "Fotografie-Workshop",
+    "infoUrl": "https://info.url",
+    "seats": 20,
+    "taken": 15,
+    "icon": "https://icon.url",
+    "exclusive": [
+      "Option2"
+    ]
+  },
+  "Option2": { 
+    "name": "Videobearbeitungs-Kurs",
+    "infoUrl": "https://info.url",
+    "seats": 20,
+    "taken": 10,
+    "icon": "https://icon.url",
+    "exclusive": [
+      "Option1"
+    ]
+  },
+  "Option3": {
+    "name": "Grundlagen der Webentwicklung",
+    "infoUrl": "https://info.url",
+    "seats": 20,
+    "taken": 12,
+    "icon": "https://icon.url",
+    "exclusive": [
+    ]
+    }
+}
+''';
+
+class CourseOption {
+  final String id;
+  final String name;
+  final int seats;
+  final int taken;
+  final List<String> exclusive;
+
+  CourseOption({
+    required this.id,
+    required this.name,
+    required this.seats,
+    required this.taken,
+    required this.exclusive,
+  });
+
+  // Eine "Factory"-Methode, um ein CourseOption-Objekt aus JSON zu erstellen.
+  factory CourseOption.fromJson(String id, Map<String, dynamic> json) {
+    return CourseOption(
+      id: id,
+      name: json['name'] ?? 'Unbenannte Option',
+      seats: json['seats'] ?? 0,
+      taken: json['taken'] ?? 0,
+      exclusive: List<String>.from(json['exclusive'] ?? []),
+    );
+  }
+
+  // Ein Helfer, um zu prüfen, ob die Option ausgebucht ist.
+  bool get isFull => taken >= seats;
+}
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -12,26 +78,146 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter Optionsauswahl',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const OptionSelectionScreen(),
+    );
+  }
+}
+
+class OptionSelectionScreen extends StatefulWidget {
+  const OptionSelectionScreen({super.key});
+
+  @override
+  State<OptionSelectionScreen> createState() => _OptionSelectionScreenState();
+}
+
+class _OptionSelectionScreenState extends State<OptionSelectionScreen> {
+  // Liste aller verfügbaren Optionen
+  List<CourseOption> _allOptions = [];
+  // Ein Set, um die IDs der ausgewählten Optionen zu speichern.
+  // Ein Set ist hier effizient, da es keine Duplikate erlaubt.
+  final Set<String> _selectedOptionIds = {};
+  final int _maxSelections = 2;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOptions();
+  }
+
+  // Lädt und parst die JSON-Daten.
+  void _loadOptions() {
+    final Map<String, dynamic> jsonData = json.decode(mockjsonDataString);
+    setState(() {
+      _allOptions = jsonData.entries.map((entry) {
+        return CourseOption.fromJson(entry.key, entry.value);
+      }).toList();
+    });
+  }
+
+  // 3. Die Logik zur Verwaltung der Auswahl
+  void _handleSelection(CourseOption option) {
+    setState(() {
+      // Wenn die Option bereits ausgewählt ist, wird sie abgewählt.
+      if (_selectedOptionIds.contains(option.id)) {
+        _selectedOptionIds.remove(option.id);
+      } else {
+        // Fügt die Option hinzu, wenn die Regeln es erlauben.
+        _selectedOptionIds.add(option.id);
+      }
+    });
+  }
+
+  // Prüft, ob eine Option zur Auswahl zur Verfügung steht.
+  bool _isOptionEnabled(CourseOption option) {
+    // Bereits ausgewählte Optionen können immer abgewählt werden.
+    if (_selectedOptionIds.contains(option.id)) {
+      return true;
+    }
+
+    // Deaktiviere, wenn die Option ausgebucht ist.
+    if (option.isFull) {
+      return false;
+    }
+
+    // Deaktiviere, wenn das Maximum an Auswahlen erreicht ist.
+    if (_selectedOptionIds.length >= _maxSelections) {
+      return false;
+    }
+
+    // Deaktiviere, wenn eine exklusive Option bereits gewählt ist.
+    for (String selectedId in _selectedOptionIds) {
+      // Finde die bereits ausgewählte Option in der Gesamtliste.
+      final selectedOption = _allOptions.firstWhere((opt) => opt.id == selectedId);
+      // Prüfe in beide Richtungen auf Exklusivität.
+      if (selectedOption.exclusive.contains(option.id) || option.exclusive.contains(selectedId)) {
+        return false;
+      }
+    }
+
+    return true; // Wenn keine Regel zutrifft, ist die Auswahl erlaubt.
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Wähle bis zu 2 Optionen'),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              '${_selectedOptionIds.length} von $_maxSelections ausgewählt',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _allOptions.length,
+              itemBuilder: (context, index) {
+                final option = _allOptions[index];
+                final isSelected = _selectedOptionIds.contains(option.id);
+                final isEnabled = _isOptionEnabled(option);
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                  color: isEnabled ? Colors.white : Colors.grey[300],
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: option.isFull ? Colors.red.shade100 : Colors.green.shade100,
+                      child: Icon(
+                        option.isFull ? Icons.do_not_disturb_on : Icons.check,
+                        color: option.isFull ? Colors.red : Colors.green,
+                      ),
+                    ),
+                    title: Text(option.name),
+                    subtitle: Text(
+                        option.isFull
+                            ? 'Ausgebucht'
+                            : 'Freie Plätze: ${option.seats - option.taken}'
+                    ),
+                    trailing: Checkbox(
+                      value: isSelected,
+                      // Das Checkbox wird deaktiviert, indem onChanged auf null gesetzt wird.
+                      onChanged: isEnabled
+                          ? (bool? value) => _handleSelection(option)
+                          : null,
+                    ),
+                    // Die gesamte Kachel wird klickbar gemacht.
+                    onTap: isEnabled ? () => _handleSelection(option) : null,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
