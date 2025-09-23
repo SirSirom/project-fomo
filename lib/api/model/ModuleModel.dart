@@ -23,7 +23,7 @@ class ModuleModel {
 
   static List<ModuleModel> modulesFromJson(String str) => List<ModuleModel>.from(json.decode(str).map((x) => ModuleModel.fromJson(x)));
 
-  factory ModuleModel.fromJson(Map<String, dynamic> jsonMap){
+  factory ModuleModel.fromJson(Map<String, dynamic> jsonMap) {
 
     /// Convert Map<String, dynamic> to ModuleModel object
     return ModuleModel(
@@ -33,7 +33,9 @@ class ModuleModel {
         maxSeats: jsonMap["seats"] as int,
         takenSeats: jsonMap["taken"] as int,
         iconUrl: jsonMap["icon"] as String,
-        restrictedModules: jsonMap["exclusive"] as List<String>?
+        restrictedModules: (jsonMap["exclusive"] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList()
     );
 
   }
