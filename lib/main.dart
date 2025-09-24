@@ -15,7 +15,7 @@ const String mockjsonDataString = '''
     "taken": 15,
     "icon": "https://icon.url",
     "exclusive": [
-      "Option2"
+      "Course2"
     ]
   },
   "Course2": { 
@@ -25,7 +25,7 @@ const String mockjsonDataString = '''
     "taken": 10,
     "icon": "https://icon.url",
     "exclusive": [
-      "Option1"
+      "Course1"
     ]
   },
   "Course3": {
