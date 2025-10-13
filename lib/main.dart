@@ -33,6 +33,7 @@ class CourseSelectionScreen extends StatefulWidget {
 
 class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
   bool _isLoading = true;
+  bool _isSubmitting = false; //for feedback after submitting the selection
   // Liste aller verfügbaren Kurse
   List<ModuleModel> _allModuleOptions = [];
   // Ein Set, um die IDs der ausgewählten Kurse zu speichern.
@@ -104,6 +105,22 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
     return true; // Wenn keine Regel zutrifft, ist die Auswahl erlaubt.
   }
 
+  Future<void> _submitSelection() async {
+    setState(() => _isSubmitting = true);
+
+    // Beispiel: simulierter API-Call
+    await Future.delayed(const Duration(seconds: 2));
+
+    setState(() => _isSubmitting = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Auswahl erfolgreich gesendet (${_selectedModuleKeys.length} Module)!'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -111,6 +128,9 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
         child: CircularProgressIndicator(),
       );
     }
+
+    final bool isSubmitButtonEnabled =
+        _selectedModuleKeys.length == _maxSelections && !_isSubmitting;
 
     return Scaffold(
 
@@ -251,6 +271,40 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
               },
             ),
           ),
+
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                    isSubmitButtonEnabled ? Colors.green : Colors.grey,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: isSubmitButtonEnabled ? _submitSelection : null,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                  )
+                      : Text(
+                    'Auswahl absenden (${_selectedModuleKeys.length}/$_maxSelections)',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
+            ),
+          )
         ],
       ),
     );
