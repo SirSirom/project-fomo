@@ -5,7 +5,7 @@ class ModuleModel {
 
   String key;
   String name;
-  Uri infoUrl;
+  String description;
   int maxSeats;
   int takenSeats;
   String iconUrl;
@@ -14,7 +14,7 @@ class ModuleModel {
   ModuleModel({
     required this.key,
     required this.name,
-    required this.infoUrl,
+    required this.description,
     required this.maxSeats,
     required this.takenSeats,
     required this.iconUrl,
@@ -29,7 +29,7 @@ class ModuleModel {
     return ModuleModel(
         key: jsonMap["key"] as String,
         name: jsonMap["name"] as String,
-        infoUrl: Uri.parse(jsonMap["infoUrl"] as String),
+        description: jsonMap["description"] as String,
         maxSeats: jsonMap["seats"] as int,
         takenSeats: jsonMap["taken"] as int,
         iconUrl: jsonMap["icon"] as String,
@@ -45,11 +45,13 @@ class ModuleModel {
     return '''{
       "key": $key,
       "name": "$name",
-      "infoURL": "$infoUrl",
+      "description": "$description",
       "maxSeats": "$maxSeats",
-      "maxSeats": "$takenSeats",
+      "takenSeats": "$takenSeats",
       "iconURL": "$iconUrl",
       "restrictedModules": "${restrictedModules.toString()}"
      }''';
   }
+
+  bool get isFull => maxSeats <= takenSeats;
 }

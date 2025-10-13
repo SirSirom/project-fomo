@@ -1,75 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:project_fomo/api/model/ModuleModel.dart';
 import 'dart:convert';
 import 'package:project_fomo/api/util/ApiHelper.dart';
 
 void main() {
   runApp(const MyApp());
 }
-
-const String mockjsonDataString = '''
-{
-  "Course1": {
-    "name": "Fotografie-Workshop",
-    "infoUrl": "https://info.url",
-    "seats": 20,
-    "taken": 15,
-    "icon": "https://icon.url",
-    "exclusive": [
-      "Course2"
-    ]
-  },
-  "Course2": { 
-    "name": "Videobearbeitungs-Kurs",
-    "infoUrl": "https://info.url",
-    "seats": 20,
-    "taken": 10,
-    "icon": "https://icon.url",
-    "exclusive": [
-      "Course1"
-    ]
-  },
-  "Course3": {
-    "name": "Grundlagen der Webentwicklung",
-    "infoUrl": "https://info.url",
-    "seats": 20,
-    "taken": 12,
-    "icon": "https://icon.url",
-    "exclusive": [
-    ]
-    }
-}
-''';
-
-class CourseOption {
-  final String id;
-  final String name;
-  final int seats;
-  final int taken;
-  final List<String> exclusive;
-
-  CourseOption({
-    required this.id,
-    required this.name,
-    required this.seats,
-    required this.taken,
-    required this.exclusive,
-  });
-
-  // Eine "Factory"-Methode, um ein CourseOption-Objekt aus dem JSON zu erstellen.
-  factory CourseOption.fromJson(String id, Map<String, dynamic> json) {
-    return CourseOption(
-      id: id,
-      name: json['name'] ?? 'Unbenannter Kurs', //als Standard "Unbekannter Kurs"
-      seats: json['seats'] ?? 0, //als Standard 0
-      taken: json['taken'] ?? 0, //als Standard 0
-      exclusive: List<String>.from(json['exclusive'] ?? []), //als Standard leer
-    );
-  }
-
-  // Ein Helfer, um zu prüfen, ob der Kurs ausgebucht ist
-  bool get isFull => taken >= seats;
-}
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -97,10 +33,10 @@ class CourseSelectionScreen extends StatefulWidget {
 
 class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
   // Liste aller verfügbaren Kurse
-  List<CourseOption> _allOptions = [];
+  List<ModuleModel> _allModuleOptions = [];
   // Ein Set, um die IDs der ausgewählten Kurse zu speichern.
   // Ein Set ist hier effizient, da es keine Duplikate erlaubt.
-  final Set<String> _selectedOptionIds = {};
+  final Set<String> _selectedModuleKeys = {};
   final int _maxSelections = 2;
 
   @override
@@ -110,51 +46,49 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
   }
 
   // Lädt und parst die JSON-Daten.
-  void _loadOptions() {
-    final Map<String, dynamic> jsonData = json.decode(mockjsonDataString);
+  Future<void> _loadOptions() async {
+    List<ModuleModel> modules = await ApiHelper.loadModules(4);
     setState(() {
-      _allOptions = jsonData.entries.map((entry) {
-        return CourseOption.fromJson(entry.key, entry.value);
-      }).toList();
+      _allModuleOptions = modules;
     });
   }
 
   // 3. Die Logik zur Verwaltung der Auswahl
-  void _handleSelection(CourseOption option) {
+  void _handleSelection(ModuleModel module) {
     setState(() {
       // Wenn die Option bereits ausgewählt ist, wird sie abgewählt.
-      if (_selectedOptionIds.contains(option.id)) {
-        _selectedOptionIds.remove(option.id);
+      if (_selectedModuleKeys.contains(module.key)) {
+        _selectedModuleKeys.remove(module.key);
       } else {
         // Fügt die Option hinzu, wenn die Regeln es erlauben.
-        _selectedOptionIds.add(option.id);
+        _selectedModuleKeys.add(module.key);
       }
     });
   }
 
   // Prüft, ob eine Option zur Auswahl zur Verfügung steht.
-  bool _isOptionEnabled(CourseOption option) {
+  bool _isOptionEnabled(ModuleModel module) {
     // Bereits ausgewählte Optionen können immer abgewählt werden.
-    if (_selectedOptionIds.contains(option.id)) {
+    if (_selectedModuleKeys.contains(module.key)) {
       return true;
     }
 
     // Deaktiviere, wenn die Option ausgebucht ist.
-    if (option.isFull) {
+    if (module.isFull) {
       return false;
     }
 
     // Deaktiviere, wenn das Maximum an Auswahlen erreicht ist.
-    if (_selectedOptionIds.length >= _maxSelections) {
+    if (_selectedModuleKeys.length >= _maxSelections) {
       return false;
     }
 
     // Deaktiviere, wenn eine exklusive Option bereits gewählt ist.
-    for (String selectedId in _selectedOptionIds) {
+    for (String selectedKey in _selectedModuleKeys) {
       // Finde die bereits ausgewählte Option in der Gesamtliste.
-      final selectedOption = _allOptions.firstWhere((opt) => opt.id == selectedId);
+      final selectedModule = _allModuleOptions.firstWhere((opt) => opt.key == selectedKey);
       // Prüfe in beide Richtungen auf Exklusivität.
-      if (selectedOption.exclusive.contains(option.id) || option.exclusive.contains(selectedId)) {
+      if ((selectedModule.restrictedModules?.contains(module.key) ?? true) || (module.restrictedModules?.contains(selectedKey) ?? true)) {
         return false;
       }
     }
@@ -179,7 +113,7 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              '${_selectedOptionIds.length} von $_maxSelections Modulen ausgewählt',
+              '${_selectedModuleKeys.length} von $_maxSelections Modulen ausgewählt',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
           ),
@@ -187,11 +121,11 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
           //liste der module
           Expanded(
             child: ListView.builder( //ListView war die simpleste umsetzung
-              itemCount: _allOptions.length,
+              itemCount: _allModuleOptions.length,
               itemBuilder: (context, index) {
-                final option = _allOptions[index];
-                final isSelected = _selectedOptionIds.contains(option.id);
-                final isEnabled = _isOptionEnabled(option);
+                final moduleOption = _allModuleOptions[index];
+                final isSelected = _selectedModuleKeys.contains(moduleOption.key);
+                final isEnabled = _isOptionEnabled(moduleOption);
 
                 // einzelnes modul
                 return Card(
@@ -201,33 +135,63 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
 
                     // icon, TODO: ICON aus der übergebenen icon-URL nutzen (evtl)
                     leading: CircleAvatar(
-                      backgroundColor: option.isFull ? Colors.red.shade100 : Colors.green.shade100,
+                      backgroundColor: moduleOption.isFull ? Colors.red.shade100 : Colors.green.shade100,
                       child: Icon(
-                        option.isFull ? Icons.do_not_disturb_on : Icons.check,
-                        color: option.isFull ? Colors.red : Colors.green,
+                        moduleOption.isFull ? Icons.do_not_disturb_on : Icons.check,
+                        color: moduleOption.isFull ? Colors.red : Colors.green,
                       ),
                     ),
 
                     // titel
-                    title: Text(option.name),
+                    title: Text(moduleOption.name),
 
                     //anz. plätze
                     subtitle: Text(
-                        option.isFull
+                        moduleOption.isFull
                             ? 'Ausgebucht'
-                            : 'Freie Plätze: ${option.seats - option.taken}'
+                            : 'Freie Plätze: ${moduleOption.maxSeats - moduleOption.takenSeats}'
                     ),
 
                     //selection checkbox
-                    trailing: Checkbox(
-                      value: isSelected,
-                      // die checkbox wird deaktiviert indem onChanged auf null gesetzt wird
-                      onChanged: isEnabled
-                          ? (bool? value) => _handleSelection(option)
-                          : null,
+                    // Checkbox + Info-Button
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min, // wichtig, damit die Row nicht den ganzen Platz einnimmt
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.info_outline, color: Colors.blueAccent),
+                          tooltip: 'Mehr Informationen', // zeigt beim Hover/Langdruck einen Tooltip an
+                          onPressed: () {
+                            // Beispiel: Dialog mit weiteren Infos öffnen
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text(moduleOption.name),
+                                content: Text(
+                                  '${moduleOption.description}\n\n'
+                                      'Freie Plätze: ${moduleOption.maxSeats - moduleOption.takenSeats}\n'
+                                      'Maximale Plätze: ${moduleOption.maxSeats}',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: const Text('Schließen'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        Checkbox(
+                          value: isSelected,
+                          onChanged: isEnabled
+                              ? (bool? value) => _handleSelection(moduleOption)
+                              : null,
+                        ),
+                      ],
                     ),
+
                     // die gesamte kachel wird klickbar gemacht (TODO: gesamter Eintrag oder nur checkbox klickbar machen?)
-                    onTap: isEnabled ? () => _handleSelection(option) : null,
+                    onTap: isEnabled ? () => _handleSelection(moduleOption) : null,
                   ),
                 );
               },
