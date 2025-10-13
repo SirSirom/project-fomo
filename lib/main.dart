@@ -32,6 +32,7 @@ class CourseSelectionScreen extends StatefulWidget {
 }
 
 class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
+  bool _isLoading = true;
   // Liste aller verfügbaren Kurse
   List<ModuleModel> _allModuleOptions = [];
   // Ein Set, um die IDs der ausgewählten Kurse zu speichern.
@@ -39,18 +40,25 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
   final Set<String> _selectedModuleKeys = {};
   final int _maxSelections = 2;
 
+
   @override
   void initState() {
     super.initState();
     _loadOptions();
   }
 
-  // Lädt und parst die JSON-Daten.
+  // Load and parse api data.
   Future<void> _loadOptions() async {
-    List<ModuleModel> modules = await ApiHelper.loadModules(4);
-    setState(() {
-      _allModuleOptions = modules;
-    });
+    try {
+      List<ModuleModel> modules = await ApiHelper.loadModules(4);
+      setState(() {
+        _allModuleOptions = modules;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      debugPrint('Fehler beim Laden: $e');
+    }
   }
 
   // 3. Die Logik zur Verwaltung der Auswahl
@@ -98,6 +106,12 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     return Scaffold(
 
       //app bar
@@ -106,7 +120,8 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
       ),
 
       //body
-      body: Column(
+      body:
+      Column(
         children: [
 
           //x von x ausgewählt Text
