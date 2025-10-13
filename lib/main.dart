@@ -152,24 +152,64 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
                             : 'Freie Plätze: ${moduleOption.maxSeats - moduleOption.takenSeats}'
                     ),
 
-                    //selection checkbox
-                    // Checkbox + Info-Button
+                    // Info-Button + Checkbox
                     trailing: Row(
-                      mainAxisSize: MainAxisSize.min, // wichtig, damit die Row nicht den ganzen Platz einnimmt
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.info_outline, color: Colors.blueAccent),
-                          tooltip: 'Mehr Informationen', // zeigt beim Hover/Langdruck einen Tooltip an
+                          icon: const Icon(Icons.info_outline, color: Color.fromARGB(255, 72, 113, 59)),
+                          tooltip: 'Mehr Informationen',
                           onPressed: () {
-                            // Beispiel: Dialog mit weiteren Infos öffnen
                             showDialog(
                               context: context,
                               builder: (context) => AlertDialog(
-                                title: Text(moduleOption.name),
-                                content: Text(
-                                  '${moduleOption.description}\n\n'
-                                      'Freie Plätze: ${moduleOption.maxSeats - moduleOption.takenSeats}\n'
-                                      'Maximale Plätze: ${moduleOption.maxSeats}',
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+
+                                titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                                contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+
+                                title: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        moduleOption.name,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Image.network(
+                                        moduleOption.iconUrl,
+                                        width: 128,
+                                        height: 128,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                        const Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      moduleOption.isFull
+                                          ? 'Dieses Modul ist derzeit ausgebucht.'
+                                          : 'Freie Plätze: ${moduleOption.maxSeats - moduleOption.takenSeats}\n'
+                                          'Maximale Plätze: ${moduleOption.maxSeats}',
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      moduleOption.description,
+                                      style: const TextStyle(color: Colors.black87),
+                                    ),
+                                  ],
                                 ),
                                 actions: [
                                   TextButton(
@@ -179,8 +219,7 @@ class _CourseSelectionScreenState extends State<CourseSelectionScreen> {
                                 ],
                               ),
                             );
-                          },
-                        ),
+                          }),
                         Checkbox(
                           value: isSelected,
                           onChanged: isEnabled
